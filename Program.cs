@@ -1,10 +1,20 @@
+using Microsoft.EntityFrameworkCore;
 using Ramon_Gonzalez_AP1_P2.Components;
+using Ramon_Gonzalez_AP1_P2.DAL;
+using Ramon_Gonzalez_AP1_P2.Service;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var connectionString = builder.Configuration.GetConnectionString("SqlConStr");  
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddScoped<DetallesService>();
+
+builder.Services.AddDbContextFactory<Contexto>(options =>
+options.UseSqlServer(connectionString));
 
 var app = builder.Build();
 

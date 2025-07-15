@@ -1,0 +1,190 @@
+﻿@page "/Entradas/IndexEntradas"
+@using Ramon_Gonzalez_AP1_P2.Models
+@using Ramon_Gonzalez_AP1_P2.Services
+@inject EntradasService entradasService
+@inject NavigationManager navigationManager
+@inject Blazored.Toast.Services.IToastService toastService
+@rendermode InteractiveServer
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Índice de Entradas de Productos</PageTitle>
+
+<div class="container">
+    <div class="card shadow-lg">
+        <div class="card-header text-center">
+            <h3 class="card-title fw-bold">Entradas de Productos</h3>
+        </div>
+
+        <div class="card-body p-3">
+
+            <div class="row mb-2">
+                <div class="col-3">
+                    <label class="col-form-label"><strong>Filtrar por</strong></label>
+                </div>
+                <div class="col-4">
+                    <label class="col-form-label"><strong>Búsqueda</strong></label>
+                </div>
+                <div class="col-2">
+                    <label class="col-form-label"><strong>Desde</strong></label>
+                </div>
+                <div class="col-2">
+                    <label class="col-form-label"><strong>Hasta</strong></label>
+                </div>
+            </div>
+
+            <div class="row align-items-center mb-3">
+
+                <div class="col-3">
+                    <InputSelect class="form-select" @bind-Value="MetodoBusqueda" @onchange="RestablecerBusquedaYFiltrar">
+                        <option value="Id">Entrada Id</option>
+                        <option value="Concepto">Concepto</option>
+                        <option value="PesoTotal">Peso Total</option>
+                    </InputSelect>
+                </div>
+                <div class="col-4">
+                    <div class="input-group">
+                        @if (MetodoBusqueda == "Id")
+                        {
+                            <InputNumber class="form-control" @bind-Value="BusquedaId" placeholder="Buscar por Entrada Id..." />
+                        }
+                        else if (MetodoBusqueda == "Concepto")
+                        {
+                            <InputText class="form-control" @bind-Value="BusquedaConcepto" placeholder="Buscar por Concepto..." />
+                        }
+                        else if (MetodoBusqueda == "PesoTotal")
+                        {
+                            <InputNumber class="form-control" @bind-Value="BusquedaPesoTotal" placeholder="Buscar por Peso Total..." />
+                        }
+                        <button type="button" class="btn btn-outline-primary bi bi-search" @onclick="FiltrarEntradas"></button>
+                        <button type="button" class="btn btn-outline-secondary bi bi-arrow-counterclockwise" @onclick="RestablecerFiltros"></button>
+                    </div>
+                </div>
+                <div class="col-2">
+                    <InputDate class="form-control" @bind-Value="FechaInicio" id="fechaDesde" />
+                </div>
+                <div class="col-2">
+                    <InputDate class="form-control" @bind-Value="FechaFin" id="fechaHasta" />
+                </div>
+            </div>
+
+            <div class="col text-end mt-2">
+                <a href="/Entradas/CreateEntrada" class="btn btn-success">
+                    <i class="bi bi-plus-square"></i> Crear
+                </a>
+            </div>
+
+            <div class="table-responsive mt-3">
+                <table class="table table-hover">
+                    <thead class="table table-striped text-black">
+                        <tr>
+                            <th>Entrada Id</th>
+                            <th>Fecha</th>
+                            <th>Concepto</th>
+                            <th class="text-end pe-5">Peso Total</th>
+                            <th class="text-center">Editar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (entradasFiltradas.Any())
+                        {
+                            @foreach (var entrada in entradasFiltradas)
+                            {
+                                <tr>
+                                    <td>@entrada.EntradaId</td>
+                                    <td>@entrada.Fecha.ToString("dd/MM/yyyy")</td>
+                                    <td>@entrada.Concepto</td>
+                                    <td class="text-end pe-5">@entrada.PesoTotal.ToString("N2") Kg</td>
+                                    <td class="text-center">
+                                        <a href="/Entradas/EditEntrada/@entrada.EntradaId" class="btn btn-outline-primary bi bi-pencil-square"></a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center">No hay entradas registradas.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <div class="row">
+                <div class="col text-start">
+                    <strong>Conteo de Entradas:</strong> @NumeroEntradas
+                </div>
+                <div class="col text-end">
+                    <strong>Peso Total Acumulado:</strong> @PesoTotalAcumulado.ToString("N2") Kg
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    public List<Entrada> entradas { get; set; } = new List<Entrada>();
+    public List<Entrada> entradasFiltradas { get; set; } = new List<Entrada>();
+
+    public string MetodoBusqueda { get; set; } = "Id";
+    public int BusquedaId { get; set; }
+    public string BusquedaConcepto { get; set; } = string.Empty;
+    public double? BusquedaPesoTotal { get; set; }
+    public DateTime? FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+
+    public int NumeroEntradas { get; set; } = 0;
+    public double PesoTotalAcumulado { get; set; } = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        entradas = await entradasService.Listar(e => true);
+        entradasFiltradas = new List<Entrada>(entradas);
+        CalcularResumen();
+    }
+
+    private void CalcularResumen()
+    {
+        NumeroEntradas = entradasFiltradas.Count;
+        PesoTotalAcumulado = entradasFiltradas.Sum(e => e.PesoTotal);
+    }
+
+    private void FiltrarEntradas()
+    {
+        entradasFiltradas = entradas
+            .Where(e =>
+                (MetodoBusqueda == "Id" && (BusquedaId == 0 || e.EntradaId == BusquedaId)) ||
+                (MetodoBusqueda == "Concepto" && (string.IsNullOrWhiteSpace(BusquedaConcepto) || e.Concepto.Contains(BusquedaConcepto, StringComparison.OrdinalIgnoreCase))) ||
+                (MetodoBusqueda == "PesoTotal" && (!BusquedaPesoTotal.HasValue || e.PesoTotal == BusquedaPesoTotal.Value))
+            )
+            .Where(e =>
+                (!FechaInicio.HasValue || e.Fecha.Date >= FechaInicio.Value.Date) &&
+                (!FechaFin.HasValue || e.Fecha.Date <= FechaFin.Value.Date)
+            )
+            .ToList();
+
+        CalcularResumen();
+    }
+
+    private void RestablecerFiltros()
+    {
+        BusquedaId = 0;
+        BusquedaConcepto = string.Empty;
+        BusquedaPesoTotal = null;
+        FechaInicio = null;
+        FechaFin = null;
+        MetodoBusqueda = "Id";
+        entradasFiltradas = new List<Entrada>(entradas);
+        CalcularResumen();
+    }
+
+    private void RestablecerBusquedaYFiltrar()
+    {
+        BusquedaId = 0;
+        BusquedaConcepto = string.Empty;
+        BusquedaPesoTotal = null;
+        FiltrarEntradas();
+    }
+}

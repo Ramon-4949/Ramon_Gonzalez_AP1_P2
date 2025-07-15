@@ -1,7 +1,10 @@
+using Blazored.Toast;
 using Microsoft.EntityFrameworkCore;
 using Ramon_Gonzalez_AP1_P2.Components;
-using Ramon_Gonzalez_AP1_P2.DAL;
+using Ramon_Gonzalez_AP1_P2.Context;
 using Ramon_Gonzalez_AP1_P2.Service;
+using Ramon_Gonzalez_AP1_P2.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,10 +14,13 @@ var connectionString = builder.Configuration.GetConnectionString("SqlConStr");
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddScoped<DetallesService>();
+builder.Services.AddScoped<EntradasService>();
+builder.Services.AddScoped<ProductosService>();
 
 builder.Services.AddDbContextFactory<Contexto>(options =>
 options.UseSqlServer(connectionString));
+
+builder.Services.AddBlazoredToast();
 
 var app = builder.Build();
 
